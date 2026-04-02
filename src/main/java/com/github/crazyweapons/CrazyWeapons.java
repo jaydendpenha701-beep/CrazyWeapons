@@ -80,7 +80,7 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
             lifestealBladeCooldowns.put(attacker.getUniqueId(), System.currentTimeMillis());
 
             double currentHealth = attacker.getHealth();
-            AttributeInstance maxHealthAttr = attacker.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+            AttributeInstance maxHealthAttr = attacker.getAttribute(Attribute.MAX_HEALTH);
             double maxHealth = (maxHealthAttr != null) ? maxHealthAttr.getValue() : 20.0;
 
             attacker.setHealth(Math.min(maxHealth, currentHealth + 4.0));
