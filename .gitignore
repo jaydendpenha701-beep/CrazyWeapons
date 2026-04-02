@@ -1,0 +1,11 @@
+target/
+*.jar
+*.class
+!.mvn/
+!.mvn/maven.config
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+*.log
