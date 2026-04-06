@@ -22,6 +22,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -43,12 +44,53 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("cwgive").setExecutor(this);
+
+        registerRecipes();
+
         getLogger().info("CrazyWeapons has been enabled!");
     }
 
     @Override
     public void onDisable() {
         getLogger().info("CrazyWeapons has been disabled!");
+    }
+
+    private void registerRecipes() {
+        // Lightning Sword: D = Diamond, C = Copper Ingot, S = Diamond Sword
+        // C D C
+        // D S D
+        // C D C
+        ItemStack lightningSword = createCustomItem(Material.DIAMOND_SWORD, "§bLightning Sword", 101, "lightning_sword");
+        ShapedRecipe lightningRecipe = new ShapedRecipe(new NamespacedKey(this, "lightning_sword_recipe"), lightningSword);
+        lightningRecipe.shape("CDC", "DSD", "CDC");
+        lightningRecipe.setIngredient('C', Material.COPPER_INGOT);
+        lightningRecipe.setIngredient('D', Material.DIAMOND);
+        lightningRecipe.setIngredient('S', Material.DIAMOND_SWORD);
+        Bukkit.addRecipe(lightningRecipe);
+
+        // Fire Wand: F = Fire Charge, M = Magma Cream, B = Blaze Rod
+        // M F M
+        // F B F
+        // M F M
+        ItemStack fireWand = createCustomItem(Material.BLAZE_ROD, "§6Fire Wand", 102, "fire_wand");
+        ShapedRecipe fireRecipe = new ShapedRecipe(new NamespacedKey(this, "fire_wand_recipe"), fireWand);
+        fireRecipe.shape("MFM", "FBF", "MFM");
+        fireRecipe.setIngredient('M', Material.MAGMA_CREAM);
+        fireRecipe.setIngredient('F', Material.FIRE_CHARGE);
+        fireRecipe.setIngredient('B', Material.BLAZE_ROD);
+        Bukkit.addRecipe(fireRecipe);
+
+        // Lifesteal Blade: G = Ghast Tear, E = Fermented Spider Eye, N = Netherite Sword
+        // E G E
+        // G N G
+        // E G E
+        ItemStack lifestealBlade = createCustomItem(Material.NETHERITE_SWORD, "§cLifesteal Blade", 103, "lifesteal_blade");
+        ShapedRecipe lifestealRecipe = new ShapedRecipe(new NamespacedKey(this, "lifesteal_blade_recipe"), lifestealBlade);
+        lifestealRecipe.shape("EGE", "GNG", "EGE");
+        lifestealRecipe.setIngredient('E', Material.FERMENTED_SPIDER_EYE);
+        lifestealRecipe.setIngredient('G', Material.GHAST_TEAR);
+        lifestealRecipe.setIngredient('N', Material.NETHERITE_SWORD);
+        Bukkit.addRecipe(lifestealRecipe);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
