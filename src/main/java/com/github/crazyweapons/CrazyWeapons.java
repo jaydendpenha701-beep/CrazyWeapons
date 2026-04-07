@@ -5,6 +5,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.Command;
@@ -14,13 +15,16 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SmallFireball;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -34,10 +38,15 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
     private final Map<UUID, Long> fireWandCooldowns = new HashMap<>();
     private final Map<UUID, Long> lifestealBladeCooldowns = new HashMap<>();
 
+    private final NamespacedKey weaponKey = new NamespacedKey(this, "weapon_type");
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         getCommand("cwgive").setExecutor(this);
+
+        registerRecipes();
+
         getLogger().info("CrazyWeapons has been enabled!");
     }
 
@@ -46,7 +55,45 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
         getLogger().info("CrazyWeapons has been disabled!");
     }
 
-    @EventHandler
+    private void registerRecipes() {
+        // Lightning Sword: D = Diamond, C = Copper Ingot, S = Diamond Sword
+        // C D C
+        // D S D
+        // C D C
+        ItemStack lightningSword = createCustomItem(Material.DIAMOND_SWORD, "§bLightning Sword", 101, "lightning_sword");
+        ShapedRecipe lightningRecipe = new ShapedRecipe(new NamespacedKey(this, "lightning_sword_recipe"), lightningSword);
+        lightningRecipe.shape("CDC", "DSD", "CDC");
+        lightningRecipe.setIngredient('C', Material.COPPER_INGOT);
+        lightningRecipe.setIngredient('D', Material.DIAMOND);
+        lightningRecipe.setIngredient('S', Material.DIAMOND_SWORD);
+        Bukkit.addRecipe(lightningRecipe);
+
+        // Fire Wand: F = Fire Charge, M = Magma Cream, B = Blaze Rod
+        // M F M
+        // F B F
+        // M F M
+        ItemStack fireWand = createCustomItem(Material.BLAZE_ROD, "§6Fire Wand", 102, "fire_wand");
+        ShapedRecipe fireRecipe = new ShapedRecipe(new NamespacedKey(this, "fire_wand_recipe"), fireWand);
+        fireRecipe.shape("MFM", "FBF", "MFM");
+        fireRecipe.setIngredient('M', Material.MAGMA_CREAM);
+        fireRecipe.setIngredient('F', Material.FIRE_CHARGE);
+        fireRecipe.setIngredient('B', Material.BLAZE_ROD);
+        Bukkit.addRecipe(fireRecipe);
+
+        // Lifesteal Blade: G = Ghast Tear, E = Fermented Spider Eye, N = Netherite Sword
+        // E G E
+        // G N G
+        // E G E
+        ItemStack lifestealBlade = createCustomItem(Material.NETHERITE_SWORD, "§cLifesteal Blade", 103, "lifesteal_blade");
+        ShapedRecipe lifestealRecipe = new ShapedRecipe(new NamespacedKey(this, "lifesteal_blade_recipe"), lifestealBlade);
+        lifestealRecipe.shape("EGE", "GNG", "EGE");
+        lifestealRecipe.setIngredient('E', Material.FERMENTED_SPIDER_EYE);
+        lifestealRecipe.setIngredient('G', Material.GHAST_TEAR);
+        lifestealRecipe.setIngredient('N', Material.NETHERITE_SWORD);
+        Bukkit.addRecipe(lifestealRecipe);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player attacker)) return;
 
@@ -54,13 +101,11 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
         if (item.getType() == Material.AIR || !item.hasItemMeta()) return;
 
         ItemMeta meta = item.getItemMeta();
-        Component displayName = meta.displayName();
-        if (displayName == null) return;
+        String weaponType = meta.getPersistentDataContainer().get(weaponKey, PersistentDataType.STRING);
+        if (weaponType == null) return;
 
-        String legacyName = LegacyComponentSerializer.legacySection().serialize(displayName);
-
-        // Lightning Sword: Material.DIAMOND_SWORD, Name "§bLightning Sword"
-        if (item.getType() == Material.DIAMOND_SWORD && legacyName.equals("§bLightning Sword")) {
+        // Lightning Sword
+        if (weaponType.equals("lightning_sword")) {
             if (isCooldownActive(attacker.getUniqueId(), lightningSwordCooldowns, 3000)) {
                 attacker.sendMessage(Component.text("Wait 3 seconds before using this again!", NamedTextColor.RED));
                 return;
@@ -68,26 +113,26 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
             lightningSwordCooldowns.put(attacker.getUniqueId(), System.currentTimeMillis());
 
             Entity target = event.getEntity();
-            target.getWorld().strikeLightning(target.getLocation());
+            target.getWorld().strikeLightningEffect(target.getLocation());
             event.setDamage(event.getDamage() + 4.0);
         }
 
-        // Lifesteal Blade: Material.NETHERITE_SWORD, Name "§cLifesteal Blade"
-        if (item.getType() == Material.NETHERITE_SWORD && legacyName.equals("§cLifesteal Blade")) {
+        // Lifesteal Blade
+        if (weaponType.equals("lifesteal_blade")) {
             if (isCooldownActive(attacker.getUniqueId(), lifestealBladeCooldowns, 2000)) {
-                return; // Silently fail cooldown for lifesteal
+                return;
             }
             lifestealBladeCooldowns.put(attacker.getUniqueId(), System.currentTimeMillis());
 
             double currentHealth = attacker.getHealth();
-            AttributeInstance maxHealthAttr = attacker.getAttribute(Attribute.MAX_HEALTH);
+            AttributeInstance maxHealthAttr = attacker.getAttribute(Attribute.GENERIC_MAX_HEALTH);
             double maxHealth = (maxHealthAttr != null) ? maxHealthAttr.getValue() : 20.0;
 
             attacker.setHealth(Math.min(maxHealth, currentHealth + 4.0));
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Action action = event.getAction();
@@ -98,13 +143,11 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
         if (item.getType() == Material.AIR || !item.hasItemMeta()) return;
 
         ItemMeta meta = item.getItemMeta();
-        Component displayName = meta.displayName();
-        if (displayName == null) return;
+        String weaponType = meta.getPersistentDataContainer().get(weaponKey, PersistentDataType.STRING);
+        if (weaponType == null) return;
 
-        String legacyName = LegacyComponentSerializer.legacySection().serialize(displayName);
-
-        // Fire Wand: Material.BLAZE_ROD, Name "§6Fire Wand"
-        if (item.getType() == Material.BLAZE_ROD && legacyName.equals("§6Fire Wand")) {
+        // Fire Wand
+        if (weaponType.equals("fire_wand")) {
             if (isCooldownActive(player.getUniqueId(), fireWandCooldowns, 2000)) {
                 player.sendMessage(Component.text("Wait 2 seconds before shooting again!", NamedTextColor.RED));
                 return;
@@ -139,9 +182,9 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
 
         ItemStack item;
         switch (args[0].toLowerCase()) {
-            case "lightning" -> item = createCustomItem(Material.DIAMOND_SWORD, "§bLightning Sword");
-            case "fire" -> item = createCustomItem(Material.BLAZE_ROD, "§6Fire Wand");
-            case "lifesteal" -> item = createCustomItem(Material.NETHERITE_SWORD, "§cLifesteal Blade");
+            case "lightning" -> item = createCustomItem(Material.DIAMOND_SWORD, "§bLightning Sword", 101, "lightning_sword");
+            case "fire" -> item = createCustomItem(Material.BLAZE_ROD, "§6Fire Wand", 102, "fire_wand");
+            case "lifesteal" -> item = createCustomItem(Material.NETHERITE_SWORD, "§cLifesteal Blade", 103, "lifesteal_blade");
             default -> {
                 player.sendMessage(Component.text("Invalid weapon type!", NamedTextColor.RED));
                 return true;
@@ -153,11 +196,13 @@ public class CrazyWeapons extends JavaPlugin implements Listener, CommandExecuto
         return true;
     }
 
-    private ItemStack createCustomItem(Material material, String legacyName) {
+    private ItemStack createCustomItem(Material material, String legacyName, int customModelData, String weaponType) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.displayName(LegacyComponentSerializer.legacySection().deserialize(legacyName));
+            meta.setCustomModelData(customModelData);
+            meta.getPersistentDataContainer().set(weaponKey, PersistentDataType.STRING, weaponType);
             item.setItemMeta(meta);
         }
         return item;
